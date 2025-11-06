@@ -6,6 +6,7 @@ import cors from 'cors'
 import morgan from 'morgan'
 import helmet from 'helmet'
 import { isTest } from '../env.ts'
+import { errorHandler } from './middleware/errorhandler.ts'
 
 const app = express()
 
@@ -29,6 +30,9 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes)
 app.use('/api/users', userRoutes)
 app.use('/api/habits', habitRoutes)
+
+// register error handler with correct typing to satisfy TypeScript
+app.use(errorHandler as unknown as express.ErrorRequestHandler)
 
 export { app }
 

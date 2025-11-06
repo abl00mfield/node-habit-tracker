@@ -77,7 +77,7 @@ export const updateHabit = async (req: AuthenticatedRequest, res: Response) => {
             const [updatedHabit] = await tx
                 .update(habits)
                 .set({...updates, updateAt: new Date() })
-                .where(and(eq(habitTags.id, id), eq(habits.userId, req.user.id)))
+                .where(and(eq(habits.id, id), eq(habits.userId, req.user.id)))
                 .returning()            
             
             if (!updatedHabit) {
@@ -104,7 +104,69 @@ export const updateHabit = async (req: AuthenticatedRequest, res: Response) => {
         })
     } catch (e) {
         console.error('Update habits error', e)
-        res.status(500).json({error: 'Failed to fetch habits'})
+        res.status(500).json({error: 'Failed to update habit'})
 
+    }
+}
+
+export const deleteHabit = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const id = req.params.id
+
+        const [deletedHabit] = await db
+            .delete(habits)
+            .where(and(eq(habits.id, id), eq(habits.userId, req.user.id)))
+            .returning()
+        
+        if (!deletedHabit) {
+            return res.status(404).json({error: 'Habit not found'})
+        }
+
+        res.json({
+            message: 'Habit deleted sucessfully'
+        })
+
+    } catch (e) {
+        console.error('Delete habit error: ', e)
+        res.status(500).json({error: 'Failed to delete habit'})
+    }
+}
+
+export const getHabitById = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const id = req.params.id
+        const userId = req.user!.id
+        
+        const habit = await db.query.habits.findFirst({
+            where: and(eq(habits.id, id), eq(habits.userId, userId)),
+            with: {
+                habitTags: {
+                    with: {
+                        tag: true,
+                    }
+                },
+                entries: {
+                    orderBy: [desc(entries.completionDate )],
+                    limit: 10,
+                }
+            }
+        })
+
+        if (!habit) {
+            return res.status(404).json({error: 'Habit not found'})
+        }
+
+        const habitWithTags = {
+            ...habit,
+            tags: habit.habitTags.map((ht) => ht.tag),
+            habitTags:undefined,
+        }
+
+        res.json({
+            habit: habitWithTags,
+        })
+    } catch (e) {
+        console.error('Get habit error: ', e)
+        res.status(500).json({error: 'Failed to fetch habit'})
     }
 }
